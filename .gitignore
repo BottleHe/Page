@@ -30,3 +30,7 @@
 
 # Debug files
 *.dSYM/
+
+#System files
+*DS_Store*
+.*DS_Store
