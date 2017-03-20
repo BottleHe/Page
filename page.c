@@ -163,12 +163,13 @@ ZEND_METHOD(Page, __construct)
 	MAKE_STD_ZVAL(groups);
 	array_init(pageInfo);
 	array_init(groups);
+	add_index_long(groups, 0, 1);
 	add_assoc_long(pageInfo, "prevPage", 0);
 	add_assoc_long(pageInfo, "nextPage", 0);
-	add_assoc_long(pageInfo, "realPage", 0);
-	add_assoc_long(pageInfo, "groupPageNum", 0);
+	add_assoc_long(pageInfo, "realPage", 1);
+	add_assoc_long(pageInfo, "groupPageNum", 5);
 	add_assoc_long(pageInfo, "start", 0);
-	add_assoc_long(pageInfo, "pageCount", 0);
+	add_assoc_long(pageInfo, "pageCount", 5);
 	add_assoc_long(pageInfo, "totalPage", 0);
 	add_assoc_long(pageInfo, "totalGroup", 0);
 	add_assoc_zval(pageInfo, "groups", groups);
@@ -187,24 +188,31 @@ ZEND_METHOD(Page, startUp)
 	long page, dataCount, pageCount = 5, groupPageNum = 5;
 	unsigned int i = 0;
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|ll", &page, &dataCount, &pageCount, &groupPageNum) == FAILURE) {
-		RETURN_FALSE;
+		RETURN_LONG(-1);
 	}
-	long totalPage = dataCount % pageCount == 0 ? dataCount / pageCount : dataCount / pageCount + 1; // 实现php ceil
-	if (totalPage < page)
-		RETURN_FALSE;
-	if (1 > page)
-		RETURN_FALSE;
-	long totalGroup = totalPage % groupPageNum == 0 ? totalPage / groupPageNum : totalPage / groupPageNum + 1;
-	long realGroupPageNum = totalPage > groupPageNum ? groupPageNum : totalPage; // 实际组页数
-	long *pGroups = (long*)emalloc(groupPageNum * sizeof(long));
 	zval *pageInfo;
-
 	pageInfo = zend_read_property(Page_ce, getThis(), "pageInfo", strlen("pageInfo"), 0 TSRMLS_CC);
-	// 对成员属性pageInfo 数组赋值操作
-	add_assoc_long(pageInfo, "start", (page - 1) * pageCount);
+	// 先初始已知信息
 	add_assoc_long(pageInfo, "realPage", page);
 	add_assoc_long(pageInfo, "groupPageNum", groupPageNum);
 	add_assoc_long(pageInfo, "pageCount", pageCount);
+
+	if (dataCount <= 0) {
+		page = 1;
+		add_assoc_long(pageInfo, "realPage", page);
+		RETURN_LONG(3);
+	}
+	long totalPage = dataCount % pageCount == 0 ? dataCount / pageCount : dataCount / pageCount + 1; // 实现php ceil
+	if (totalPage < page) // 如果超出最大页数, 直接以最大页为准
+		page = totalPage;
+	if (1 > page) // 如果给定的页码为0或负数, 直接重置为1
+		page = 1;
+	long totalGroup = totalPage % groupPageNum == 0 ? totalPage / groupPageNum : totalPage / groupPageNum + 1;
+	long realGroupPageNum = totalPage > groupPageNum ? groupPageNum : totalPage; // 实际组页数
+	long *pGroups = (long*)emalloc(groupPageNum * sizeof(long));
+	
+	// 对成员属性pageInfo 数组赋值操作
+	add_assoc_long(pageInfo, "start", (page - 1) * pageCount);
 	add_assoc_long(pageInfo, "totalPage", totalPage);
 	add_assoc_long(pageInfo, "totalGroup", totalGroup);
 	add_assoc_long(pageInfo, "prevPage", page <= 1 ? 0 : page - 1);
@@ -217,7 +225,7 @@ ZEND_METHOD(Page, startUp)
 		add_index_long(groups, (ulong)i, *(pGroups + i));
     add_assoc_zval(pageInfo, "groups", groups);
 	efree(pGroups);
-	RETURN_TRUE;
+	RETURN_LONG(0);
 }
 
 void getGroup(long groupPageNum, long totalPage, long realPage, long totalGroup, long **ppGroups)

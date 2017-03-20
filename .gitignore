@@ -31,6 +31,7 @@
 # Debug files
 *.dSYM/
 
-#System files
+#Develop tools files
 *DS_Store*
 .*DS_Store
+sftp-config.json
